@@ -247,21 +247,20 @@ def bwt_transform(L):
     base = []
     for i in range(256):
         base.append(F.find(chr(i)))
-    print(base)
+    #print(base)
 
     pointers = [-1] * len(L)
     for i, char in enumerate(L):
         symbol = ord(char)
         pointers[base[symbol]] = i
         base[symbol] += 1
-    print(pointers)
+    #print(pointers)
     return pointers
 
 def bwt_reverse(L, end):
     out = []
     if len(L):
         T = bwt_transform(L)
-        print(T)
 
         # STRAGENESS WARNING: There was a bug somewhere here in that
         # if the output of the BWT resolves to a perfect copy of N
@@ -364,7 +363,7 @@ def decode_huffman_block(b, out):
 
     selectors_list = compute_selectors_list(b, huffman_groups)
     symbols_in_use = sum(used) + 2  # remember RUN[AB] RLE symbols
-    print(symbols_in_use)
+    #print(symbols_in_use)
     tables = compute_tables(b, huffman_groups, symbols_in_use)
 
     #favourites = map(chr,range(sum(used)))
@@ -381,7 +380,7 @@ def decode_huffman_block(b, out):
     while True:
         decoded -= 1
         if decoded <= 0:
-            #print 'RETABLE TIME', selectors_list[selector_pointer]
+            print 'RETABLE TIME', selectors_list[selector_pointer]
             decoded = 50 # Huffman table re-evaluate/switch length
             #if t: sys.exit(1)
             if selector_pointer <= len(selectors_list):
@@ -406,7 +405,7 @@ def decode_huffman_block(b, out):
             buffer.append(favourites[0] * repeat)
             repeat = 0
         if r == symbols_in_use - 1:
-            print 'finished', `buffer[:10]`, '..', `buffer[-10:]`, 'len', len(buffer)
+            #print 'finished', `buffer[:10]`, '..', `buffer[-10:]`, 'len', len(buffer)
             break
         else:
             o = favourites[r-1]
@@ -451,6 +450,7 @@ def bzip2_main(input):
     out = []
     while True:
         #header_start = b.tellbits()
+        print("new block at %d" % (b.tellbits()+16));
         blocktype = b.readbits(48)
         crc = b.readbits(32)
         #print hex(blocktype)

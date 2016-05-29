@@ -17,13 +17,21 @@ endif
 
 # add your binary here
 BINARIES = \
-	bin/decode_serial$(EXE)
+	decode_serial$(EXE)
 
 all: $(BINARIES)
 
 clean:
 	rm -f $(BINARIES)
 
-bin/decode_serial$(EXE): examples/decode_serial.cpp include/minibzip/decoder.hpp 
+decode_serial$(EXE): examples/decode_serial.cpp include/minibzip/decoder.hpp 
 	$(CC) $(CCFLAGS) $< -o $@
+
+test:
+	$(CC) $(CCFLAGS) -D MINIBZIP_TESTING examples/decode_serial.cpp -o test$(EXE)
+	examples/pyflate.py examples/11-h.htm.bz2 > 1
+	./test$(EXE) > 2
+	diff 1 2 > 3
+	diff out out2 > 4
+
 

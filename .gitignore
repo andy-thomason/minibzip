@@ -1,5 +1,12 @@
 bin/*.exe
 bin/*.
-examples/out
-examples/out2
+out
+out2
+1
+2
+3
+4
+test.exe
+
+
 

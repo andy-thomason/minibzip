@@ -17,17 +17,14 @@
 
 namespace minibzip {
 
-struct writer {
-  virtual void write(uint64_t location, const uint8_t *data, size_t size) = 0;
-};
-
 class decoder {
 public:
 
   decoder() {
   }
 
-  bool decode_serial(const uint8_t *src, const uint8_t *src_max, writer &wr) const {
+  template <class Writer>
+  bool decode_serial(const uint8_t *src, const uint8_t *src_max, Writer wr) const {
     size_t bit = 0;
     size_t bit_max = (src_max - src) * 8;
     size_t lim = bit_max - 31;
@@ -43,6 +40,7 @@ public:
     bit += 32;
     uint64_t location = 0;
     for (;;) {
+      printf("new block at %d\n", (int)bit);
       if (bit + 48+32 > bit_max) return fail(__LINE__, "file too short");
       uint32_t sig0 = peek(src, lim, bit, 24);
       uint32_t sig1 = peek(src, lim, bit+24, 24);
@@ -53,22 +51,23 @@ public:
         out.resize(0);
         bool ok = decode_block(out, src, lim, bit);
         if (!ok) return false;
-        wr.write(location, out.data(), out.size());
+        wr(location, out.data(), out.size());
       } else if (sig0 == 0x177245 && sig1 == 0x385090) {
-        //printf("bzip2 end-of-stream block\n");
+        if (debug) printf("bzip2 end-of-stream block\n");
         bit += (0-bit) & 7;
         return true;
       } else {
         return fail(__LINE__, "invalid signature");
       }
     }
-
   }
 
 private:
   struct huffman_table;
 
   bool decode_block(std::vector<uint8_t> &out, const uint8_t *src, size_t lim, size_t &bitref) const {
+    if (debug) printf("bzip2 Huffman block\n");
+
     size_t bit = bitref;
     if (bit + 1+24+16 > lim) return fail(__LINE__, "file too short");
   
@@ -176,6 +175,7 @@ private:
         i += 1;
       }
     }
+    bitref = bit;
     return true;
   }
 
@@ -191,26 +191,25 @@ private:
     int repeat = 0, repeat_power = 0;
     for (size_t i = 0; i != selectors.size(); ++i) {
       const huffman_table *table = &tables[selectors[i]];
+      if (debug) printf("RETABLE TIME %d\n", selectors[i]);
       for (int i = 0; i != 50; ++i) {
         uint32_t symbol = peek(src, lim, bit, 24);
         unsigned bits = table->get_bits(symbol);
-        //printf("%s\n", debug_bits(symbol>>(24-bits), bits));
+        if (debug) printf("%s\n", debug_bits(symbol>>(24-bits), bits));
         bit += bits;
         uint32_t offset = (symbol - table->first_symbols[bits]) >> (24-bits);
         uint16_t code = table->codes[table->starts[bits] + offset];
-        //printf("symbol %d\n", code);
+        if (debug) printf("symbol %d\n", code);
         if (code < 2) {
-          printf("run %d\n", repeat);
+          if (debug) printf("run %d\n", repeat);
           repeat += 1 << (repeat_power++ + code);
           continue;
         } else if (repeat != 0) {
-          //printf("runfinal %d\n", repeat);
-          
-          // output favourites[0] x repeat
+          if (debug) printf("runfinal %d\n", repeat);
+          if (bwt.size() + repeat > 900*1024*2) return fail(__LINE__, "repeat too large");
           while (repeat--) {
             bwt.push_back(favourites[0]);
           }
-          //printf("output '%c'\n", output);
           repeat = repeat_power = 0;
         }
         if (code == symbols_used-1) {
@@ -219,7 +218,7 @@ private:
           return true;
         } else {
           uint8_t output = favourites[code-1];
-          //printf("output %d\n", output);
+          if (debug) printf("output %d\n", output);
           for (int i = code-1; i > 0; --i) {
             favourites[i] = favourites[i-1];
           }
@@ -307,10 +306,13 @@ private:
     uint32_t first_symbols[21];
     uint16_t codes[259];
 
-    enum {
-      debug = 1
-    };
   };
+  
+  #ifdef MINIBZIP_TESTING
+    static const bool debug = true;
+  #else
+    static const bool debug = false;
+  #endif
 };
 
 } // namespace
