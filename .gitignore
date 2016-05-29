@@ -1,0 +1,5 @@
+bin/*.exe
+bin/*.
+examples/out
+examples/out2
+
